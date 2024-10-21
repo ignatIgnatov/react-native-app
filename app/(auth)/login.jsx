@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { Link } from "expo-router";
+import { useEffect, useState } from "react";
+import { Link, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, ScrollView, Dimensions, Alert, Image } from "react-native";
 import FormField from "../../components/FormField";
 import CustomButton from "../../components/CustomButton";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { loginAction } from "../../state/authentication/Action";
+import CustomAlert from "../../components/CustomAlert";
 
 const initialForm = {
   usernameOrEmail: "",
@@ -14,14 +15,53 @@ const initialForm = {
 
 const Login = () => {
   const dispatch = useDispatch();
+  const { success, error } = useSelector((store) => store.auth);
   const [isSubmitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
+
+  // State for handling the alert modal visibility and messages
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertConfirmAction, setAlertConfirmAction] = useState(null);
+
+  useEffect(() => {
+    // If registration is successful, show success modal
+    if (success) {
+      setForm(initialForm);
+
+      setAlertTitle("Success");
+      setAlertMessage(success);
+      setAlertConfirmAction(() => () => {
+        setAlertVisible(false);
+        router.push("/home");
+      });
+      setAlertVisible(true);
+    }
+
+    // If there's an error, show error modal
+    if (error) {
+      setAlertTitle("Error");
+      setAlertMessage(error);
+      setAlertConfirmAction(() => () => setAlertVisible(false));
+      setAlertVisible(true);
+    }
+  }, [success, error]);
 
   const submit = () => {
     setSubmitting(true);
 
-    if (form.usernameOrEmail === "" || form.password === "") {
-      Alert.alert("Error", "Please fill in all fields");
+    if (
+      form.name === "" ||
+      form.username === "" ||
+      form.email === "" ||
+      form.password === "" ||
+      form.repeatPassword === ""
+    ) {
+      setAlertTitle("Error");
+      setAlertMessage("Please fill in all fields.");
+      setAlertConfirmAction(() => () => setAlertVisible(false));
+      setAlertVisible(true);
     } else {
       dispatch(loginAction(form));
     }
@@ -85,6 +125,16 @@ const Login = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Custom Alert Modal */}
+      <CustomAlert
+        visible={alertVisible}
+        onClose={() => setAlertVisible(false)}
+        onConfirm={alertConfirmAction}
+        title={alertTitle}
+        message={alertMessage}
+        confirmText="OK"
+      />
     </SafeAreaView>
   );
 };

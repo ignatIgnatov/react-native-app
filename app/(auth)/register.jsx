@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { Link } from "expo-router";
+import { useEffect, useState } from "react";
+import { Link, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, ScrollView, Dimensions, Alert, Image } from "react-native";
+import { View, Text, ScrollView, Dimensions, Image } from "react-native";
 import FormField from "../../components/FormField";
 import CustomButton from "../../components/CustomButton";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { registerUserAction } from "../../state/authentication/Action";
+import CustomAlert from "../../components/CustomAlert";
 
 const initialForm = {
   name: "",
@@ -16,14 +17,45 @@ const initialForm = {
 };
 
 const SignUp = () => {
+  // State for handling the alert modal visibility and messages
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertConfirmAction, setAlertConfirmAction] = useState(null);
+
   const dispatch = useDispatch();
+  const { success, error } = useSelector((store) => store.auth);
 
   const [isSubmitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
 
+  useEffect(() => {
+    // If registration is successful, show success modal
+    if (success) {
+      setForm(initialForm);
+
+      setAlertTitle("Success");
+      setAlertMessage(success);
+      setAlertConfirmAction(() => () => {
+        setAlertVisible(false);
+        router.push("/login");
+      });
+      setAlertVisible(true);
+    }
+
+    // If there's an error, show error modal
+    if (error) {
+      setAlertTitle("Error");
+      setAlertMessage(error);
+      setAlertConfirmAction(() => () => setAlertVisible(false));
+      setAlertVisible(true);
+    }
+  }, [success, error]);
+
   const submit = () => {
     setSubmitting(true);
 
+    // Validate form fields
     if (
       form.name === "" ||
       form.username === "" ||
@@ -31,8 +63,17 @@ const SignUp = () => {
       form.password === "" ||
       form.repeatPassword === ""
     ) {
-      Alert.alert("Error", "Please fill in all fields");
+      setAlertTitle("Error");
+      setAlertMessage("Please fill in all fields.");
+      setAlertConfirmAction(() => () => setAlertVisible(false));
+      setAlertVisible(true);
+    } else if (form.password !== form.repeatPassword) {
+      setAlertTitle("Error");
+      setAlertMessage("Passwords do not match.");
+      setAlertConfirmAction(() => () => setAlertVisible(false));
+      setAlertVisible(true);
     } else {
+      // Dispatch the registration action
       dispatch(registerUserAction(form));
     }
     setSubmitting(false);
@@ -102,7 +143,7 @@ const SignUp = () => {
             isLoading={isSubmitting}
           />
 
-          <View className="flex justify-center pt-5 flex-row gap-2">
+          <View className="flex justify-center mb-12 pt-5 flex-row gap-2">
             <Text className="text-lg text-gray-500">
               You have an account yet?
             </Text>
@@ -115,6 +156,16 @@ const SignUp = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Custom Alert Modal */}
+      <CustomAlert
+        visible={alertVisible}
+        onClose={() => setAlertVisible(false)}
+        onConfirm={alertConfirmAction}
+        title={alertTitle}
+        message={alertMessage}
+        confirmText="OK"
+      />
     </SafeAreaView>
   );
 };
